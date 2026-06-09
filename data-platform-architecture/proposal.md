@@ -1,4 +1,9 @@
 ```mermaid
+---
+config:
+  layout: elk
+  theme: redux
+---
 flowchart LR
  subgraph ODS["Operational Data Sources"]
     direction LR
