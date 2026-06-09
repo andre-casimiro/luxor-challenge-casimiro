@@ -2,7 +2,8 @@
 ---
 config:
   layout: elk
-  theme: redux
+  theme: neo
+  look: neo
 ---
 flowchart LR
  subgraph ODS["Operational Data Sources"]
@@ -29,8 +30,8 @@ flowchart LR
         BatchProcessing["Batch Processing Tools"]
         Orchestration["Orchestration Tools"]
         StreamProcessing["Stream Processing Tools"]
-        ExplorationTools["Exploration Tools"]
-        MLTools["Machine Learning Tools"]
+        ExplorationTools["Machine Learning Tools"]
+        MLTools["Exploration Tools"]
   end
  subgraph SystemsServingServices["Systems Serving Services"]
     direction LR
@@ -61,17 +62,16 @@ flowchart LR
         UserServingServices
         GovernanceServices
   end
-    ExtAPIs -- 1 --> BatchIngestTools
-    SourceDBs -- 2 --> BatchIngestTools
-    BatchIngestTools -- 3 --> MessageBus
-    StreamProducers -- 4 --> MessageBus
+    ExtAPIs -- 2 --> BatchIngestTools
+    SourceDBs -- 1 --> BatchIngestTools
+    BatchIngestTools -- 4 --> MessageBus
+    StreamProducers -- 3 --> MessageBus
     MessageBus -- 5 --> StreamIngestTools
     StreamIngestTools -- 6 --> BronzeLayer
-    TransformationServices -- 7 --> SystemsServingServices
     SystemsServingServices -- 8 --> UserServingServices
     AppsServices --> SourceDBs
-    BronzeLayer --> SilverLayer
-    SilverLayer --> GoldLayer
+    BronzeLayer -.-> SilverLayer
+    SilverLayer -.-> GoldLayer
     FeatureStore ~~~ UserSpace
     StreamProcessing ~~~ BatchProcessing
     BatchProcessing ~~~ Orchestration
@@ -82,11 +82,12 @@ flowchart LR
     DataLineage ~~~ RBAC
     Aggregations ~~~ Metrics
     Metrics ~~~ KPIs
-    QueryFederation ~~~ SpecializedDBs
+    QueryFederation --> SpecializedDBs
     ReportingTools ~~~ Dashboarding
     DataDiscovery ~~~ DataCatalog
     TransformationServices -- 9 --> UserServingServices
-    SpecializedDBs --> ODS
+    TransformationServices -- 7 --> QueryFederation
+    SpecializedDBs -- 10 --> AppsServices
 
     MessageBus@{ shape: h-cyl}
     classDef default stroke:#000000,fill:#ffffff,stroke-width:1px,color:#000000
@@ -95,6 +96,6 @@ flowchart LR
     style SystemsServingServices fill:#f0f9ff,stroke:#38bdf8,stroke-width:2px
     style UserServingServices fill:#f5f3ff,stroke:#a78bfa,stroke-width:2px
     style GovernanceServices fill:#C8E6C9,stroke:#00C853,stroke-width:2px
-    style ODS stroke:#000000,fill:#ffffff,stroke-width:1px
-    style DLH stroke:#000000,fill:#ffffff,stroke-width:2px
+    style ODS stroke:#000000,fill:#e6e6e6,stroke-width:1px
+    style DLH stroke:#000000,fill:#e6e6e6,stroke-width:2px
 ```
