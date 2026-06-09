@@ -62,13 +62,16 @@ flowchart LR
         UserServingServices
         GovernanceServices
   end
-    ExtAPIs -- 2 --> BatchIngestTools
     SourceDBs -- 1 --> BatchIngestTools
-    BatchIngestTools -- 4 --> MessageBus
+    ExtAPIs -- 2 --> BatchIngestTools
     StreamProducers -- 3 --> MessageBus
+    BatchIngestTools -- 4 --> MessageBus
     MessageBus -- 5 --> StreamIngestTools
     StreamIngestTools -- 6 --> BronzeLayer
+    TransformationServices -- 7 --> QueryFederation
     SystemsServingServices -- 8 --> UserServingServices
+    TransformationServices -- 9 --> UserServingServices
+    SpecializedDBs -- 10 --> AppsServices
     AppsServices --> SourceDBs
     BronzeLayer -.-> SilverLayer
     SilverLayer -.-> GoldLayer
@@ -85,9 +88,6 @@ flowchart LR
     QueryFederation --> SpecializedDBs
     ReportingTools ~~~ Dashboarding
     DataDiscovery ~~~ DataCatalog
-    TransformationServices -- 9 --> UserServingServices
-    TransformationServices -- 7 --> QueryFederation
-    SpecializedDBs -- 10 --> AppsServices
 
     MessageBus@{ shape: h-cyl}
     classDef default stroke:#000000,fill:#ffffff,stroke-width:1px,color:#000000
