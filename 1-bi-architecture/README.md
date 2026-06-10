@@ -9,7 +9,7 @@ This document describes a **Data Lakehouse** architecture that serves two goals:
 
 Both goals share a single ingestion spine (a message bus) and a single storage layer (the lakehouse), avoiding duplicate pipelines.
 
-> **Note on tool choices** — The tools and providers listed throughout this document are illustrative. Actual choices depend on many factors, including:
+> **Note on tool choices** — The tools and providers listed throughout this document are illustrative and also my personal preferences. Actual choices depend on many factors, including:
 > - **Team expertise** — familiarity with a tool reduces onboarding cost and operational risk
 > - **Cloud provider** — existing AWS/GCP/Azure contracts favour managed services from that ecosystem
 > - **Budget** — OSS tools lower licensing cost but shift burden to operational overhead; managed services invert that trade-off
@@ -28,107 +28,52 @@ The diagram is presented below and it uses the following conventions:
 - each zone contains a set of services/tools represented by squared boxes
 - each zone also contains a set of logical data stores represented by cylinders
 - the arrows represent the flow of data, and the main ones are numbered for further description
-- the name of real services and how the parts works together is explained after the image
 - I've only presented tools I've used before or I know how they work
-- see [`architecture-diagram.mmd`](./architecture-diagram.mmd) for the full Mermaid source.
+- the same architecture is rendered against two concrete stacks — an **OSS / self-hosted** stack and a **modern managed-SaaS** stack — so the design is decoupled from any single vendor
+- diagram sources: [`architecture-oss.d2`](./architecture-oss.d2) and [`architecture-modern.d2`](./architecture-modern.d2). Render with `d2 --layout elk <file>.d2 <file>.png`
+
+### Diagram — OSS / self-hosted stack
+![architecture-oss.png](architecture-oss.png)
+
+### Diagram — Modern managed-SaaS stack
+![architecture-modern.png](architecture-modern.png)
+
+### Layers
+
+The stack is organised into six zones. The two tables below consolidate every tool and logical data store across all of them.
+
+- **⚫ Operational Data Sources** — source systems: external APIs, internal apps, and the operational databases that are the system of record.
+- **🟡 Ingestion Layer** — moves data from sources into the lakehouse, via batch pulls or real-time event streaming.
+- **🔴 Transformation Layer** — hosts the medallion storage layers (Bronze/Silver/Gold), persisted as open-format **Apache Iceberg** tables on object storage (or Snowflake-managed tables), plus the tools that refine raw data into trusted, analytics-ready assets.
+- **🔵 Systems Serving Layer** — materialises and exposes analytics-ready data through specialized engines and query federation.
+- **🟣 User Serving Layer** — surfaces data to end users through interactive dashboards, scheduled reports, and cached query results.
+- **🟢 Governance Layer** — cross-cutting layer ensuring data is discoverable, trustworthy, and access-controlled across every zone.
+
+### Numbered data flows
+1. Batch pull of operational databases into the ingestion layer
+2. Applications emit events directly onto the message bus
+3. Batch pull of external APIs into the ingestion layer
+4. Batch-ingested records are published to the bus (single ingestion spine)
+5. Stream ingestion consumes bus topics
+6. Stream processing reads from and writes back to the bus (enrichment in motion)
+7. Raw events land in the Bronze layer
+8. Refined medallion data is served to the systems serving layer
+9. Serving layer powers user-facing dashboards and reports
+10. Specialized stores feed real-time data products back into operational apps
 
 
-### Diagram
-![architecture-diagram.png](architecture-diagram.png)
+### Data Stores
 
-#### ⚫ Operational Data Sources
+Here's an explanation of what types of data sits on each logical data store represented on the diagrams as cylinders. The concrete storage engines that back each store are named in the diagrams.
 
-##### Tools
-| Service Type | Description | OSS Tools | Providers |
-|---|---|---|---|
-| External APIs | Third-party data sources exposing data via REST / GraphQL | — | Google Sheets, Google Ads |
-| Apps & Services | Internal microservices and client applications that write to operational databases and emit events to the message bus | FastAPI, Spring Boot, Node.js | — |
-
-##### Data
-| Logical Data Store | Description |
-|---|---|
-| Operational Databases | Transactional stores that are the system of record for business operations — e.g. PostgreSQL, MariaDB (OSS); Amazon RDS (managed) |
-
----
-
-#### 🟡 Ingestion Layer
-Responsible for moving data from sources into the lakehouse, via batch pulls or real-time event streaming.
-
-##### Tools
-| Service Type | Description | OSS Tools | Providers |
-|---|---|---|---|
-| Batch Ingestion | Periodically extracts data from operational databases and external APIs | Airbyte, Debezium (CDC) | AWS DMS |
-| Stream Ingestion | Forwards events arriving on the message bus into the Bronze layer | Apache Flink, Apache Spark | — |
-| Schema Registry | Enforces and versions message schemas (Avro / Protobuf) so producers and consumers stay in sync | Apache Pulsar (built-in), Confluent Schema Registry | — |
-
-##### Data
-| Logical Data Store | Description |
-|---|---|
-| Topics | Message bus partitioned by domain/entity, carrying raw change events and application events in real time |
-
----
-
-#### 🔴 Transformation Layer
-Hosts the medallion storage layers and all tools that refine raw data into trusted, analytics-ready assets.
-
-##### Tools
-| Service Type | Description | OSS Tools | Providers |
-|---|---|---|---|
-| Batch Processing | Scheduled, large-scale transformations over the medallion layers | Apache Spark, dbt Core | Databricks |
-| Stream Processing | Low-latency transformation and enrichment of events in motion | Apache Flink, Spark Structured Streaming | — |
-| Orchestration | DAG scheduling, dependency resolution, and pipeline retries | Apache Airflow | Astronomer |
-| Data Quality | Automated schema, freshness, and integrity checks run as pipeline gates | Great Expectations, dbt tests | — |
-
-##### Data
-| Logical Data Store | Description |
-|---|---|
-| Bronze Layer | Landing zone — raw, unmodified data ingested from sources, partitioned by ingestion date. Preserves full history for reprocessing |
-| Silver Layer | Cleaned and conformed data — deduplication, schema normalization, type casting, and light business rules applied |
-| Gold Layer | Aggregated, business-ready datasets modelled around domains (facts & dimensions). Directly consumed by downstream serving and analytics |
-| User Space | Sandbox area for analysts to create ad-hoc tables and exploratory datasets without polluting governed layers |
-
----
-
-#### 🔵 Systems Serving Layer
-Materialises and exposes analytics-ready data to downstream consumers through specialized engines and query federation.
-
-##### Tools
-| Service Type | Description | OSS Tools | Providers |
-|---|---|---|---|
-| Specialized Databases | High-performance stores purpose-built for specific access patterns (time-series, wide-column, OLAP) | InfluxDB, Cassandra | Redshift, Snowflake |
-| Query Federation | SQL query interface over distributed or heterogeneous data stores | Apache Hive, Cloudera Impala, Presto | — |
-
-##### Data
-| Logical Data Store | Description |
-|---|---|
-| Aggregations & Views | Pre-computed rollups (hourly, daily, weekly) and reusable views stored for instant retrieval, avoiding repeated full-table scans |
-| Metrics & KPIs | Operational and product metrics alongside named, versioned key business indicators with agreed calculation logic and ownership — consumed by dashboards, alerting systems, and ML pipelines |
-
----
-
-#### 🟣 User Serving Layer
-Surfaces data to end users (analysts, operators, executives) through interactive dashboards, scheduled reports, and cached query results.
-
-##### Tools
-| Service Type | Description | OSS Tools | Providers |
-|---|---|---|---|
-| Dashboarding | Self-service exploration and executive dashboards | Grafana, Redash | Tableau, Looker |
-| Reporting | Scheduled or on-demand report generation and distribution | Redash, Grafana | Tableau |
-
-##### Data
-| Logical Data Store | Description |
-|---|---|
-| Cache Engines | Short-lived result caches that accelerate repeated dashboard queries and reduce pressure on query engines (e.g. Redis, Memcached) |
-
----
-
-#### 🟢 Governance Layer
-Cross-cutting layer that ensures data is discoverable, trustworthy, and access-controlled across every zone.
-
-##### Tools
-| Service Type | Description | OSS Tools | Providers |
-|---|---|---|---|
-| Data Catalog | Centralised inventory of datasets, schemas, owners, and descriptions | — | Atlan |
-| Data Lineage | Tracks end-to-end data flow from source to report, enabling impact analysis and debugging | Marquez | Atlan |
-| RBAC | Role-based access control policies applied at the table/column level across all layers and serving engines | — | AWS IAM |
-| Data Discovery | Search and recommendation interface for finding datasets, metrics, and owners | — | Atlan |
+| Zone | Logical Data Store | Description                                                                                                                                                                                 |
+|---|---|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| ⚫ Sources | Operational Databases | Transactional stores that are the system of record for business operations                                                           |
+| 🟡 Ingestion | Topics | Message bus partitioned by domain/entity, carrying raw change events and application events in real time                                                                                    |
+| 🔴 Transformation | Bronze Layer | Landing zone — raw, unmodified data ingested from sources, partitioned by ingestion date. Preserves full history for reprocessing                                                           |
+| 🔴 Transformation | Silver Layer | Cleaned and conformed data — deduplication, schema normalization, type casting, and light business rules applied                                                                            |
+| 🔴 Transformation | Gold Layer | Aggregated, business-ready datasets modelled around domains (facts & dimensions). Directly consumed by downstream serving and analytics                                                     |
+| 🔴 Transformation | User Space | Sandbox area for analysts to create ad-hoc tables and exploratory datasets without polluting governed layers                                                                                |
+| 🔵 Systems Serving | Aggregations & Views | Pre-computed rollups (hourly, daily, weekly) and reusable views stored for instant retrieval, avoiding repeated full-table scans                                                            |
+| 🔵 Systems Serving | Metrics & KPIs | Operational and product metrics alongside named, versioned key business indicators with agreed calculation logic and ownership — consumed by dashboards, alerting systems, and ML pipelines |
+| 🟣 User Serving | Cache Engines | Query results caches that accelerate repeated dashboard queries and reduce pressure on query engines                                                                                        |

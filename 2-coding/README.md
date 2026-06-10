@@ -54,10 +54,18 @@ retrieval — see [Schema rationale](#schema-rationale).
 
 ---
 
-## Running it
+## Prerequisites
 
-**Prerequisites:** Docker, [`uv`](https://docs.astral.sh/uv/), and (optionally) a CoinGecko
-demo API key.
+| Tool | Version | Notes |
+|---|---|---|
+| [Docker](https://docs.docker.com/get-docker/) + Compose | any recent | runs TimescaleDB; needs host port **15432** free |
+| [`uv`](https://docs.astral.sh/uv/) | ≥ 0.4 | manages the Python 3.12 venv and deps |
+| Python | 3.12 | pinned (`.python-version`); `uv` will fetch it if absent — bytewax ships no 3.13 wheel yet |
+| CoinGecko demo API key | optional | only needed for an uninterrupted 1/s feed (see [rate limits](#running-it)) |
+
+---
+
+## Running it
 
 ```bash
 make up        # 1. start TimescaleDB (host port 15432)

@@ -1,0 +1,140 @@
+# BI & Operational Data Architecture — OSS / self-hosted stack
+# Render: d2 --layout elk architecture-oss.d2 architecture-oss.png
+
+direction: right
+
+vars: {
+  d2-config: {
+    pad: 60
+  }
+}
+
+# ----------------------- Reusable styles --------------------
+classes: {
+  tool: {
+    style: { fill: "#FFFFFF"; stroke: "#D9DEE3"; stroke-width: 2; border-radius: 10; shadow: true; font-size: 19 }
+  }
+  store: {
+    shape: cylinder
+    style: { fill: "#FFFFFF"; stroke: "#B0BEC5"; stroke-width: 2; shadow: true; font-size: 19 }
+  }
+  zone: {
+    style: { stroke-width: 2; border-radius: 16; font-size: 26; bold: true }
+  }
+  flow: {
+    style: { stroke: "#5B6B7B"; stroke-width: 3; font-size: 24; bold: true }
+  }
+  medallion: {
+    style: { stroke: "#90A4AE"; stroke-width: 3; stroke-dash: 4 }
+  }
+}
+
+title: "BI & Operational Data Architecture — OSS / self-hosted stack" {
+  near: top-center
+  shape: text
+  height: 110
+  style: { font-size: 40; bold: true; font-color: "#2B3640" }
+}
+
+# ----------------- Operational Data Sources -----------------
+ods: Operational Data Sources {
+  class: zone
+  style: { fill: "#ECEFF1"; stroke: "#607D8B" }
+
+  extapis: External APIs { class: tool; icon: https://cdn.simpleicons.org/openapiinitiative }
+  apps: "Apps & Services\n(FastAPI / Node.js)" { class: tool; icon: https://cdn.simpleicons.org/fastapi }
+  sourcedbs: "Operational DBs\n(PostgreSQL / MySQL)" {
+    class: store
+    icon: https://cdn.simpleicons.org/postgresql
+    style.stroke: "#336791"
+  }
+}
+
+# --------------------- Data Lakehouse -----------------------
+dlh: Data Lakehouse {
+  class: zone
+  style: { fill: "#FAFBFC"; stroke: "#90A4AE"; font-size: 22 }
+
+  # ---------- Governance (cross-cutting) ----------
+  gov: Governance Layer {
+    class: zone
+    grid-rows: 1
+    style: { fill: "#E8F5E9"; stroke: "#43A047" }
+    discovery: "Data Discovery\nOpenMetadata" { class: tool; icon: https://api.iconify.design/mdi/magnify.svg }
+    catalog: "Data Catalog\nOpenMetadata" { class: tool; icon: https://api.iconify.design/mdi/book-open-variant.svg }
+    lineage: "Data Lineage\nMarquez" { class: tool; icon: https://api.iconify.design/mdi/sitemap.svg }
+    rbac: "RBAC\nApache Ranger / OPA" { class: tool; icon: https://api.iconify.design/mdi/shield-lock-outline.svg }
+  }
+
+  # ---------- Ingestion ----------
+  ingestion: Ingestion Layer {
+    class: zone
+    style: { fill: "#FFF8E1"; stroke: "#F9A825" }
+
+    batch: "Batch Ingestion\nAirbyte + Debezium (CDC)" { class: tool; icon: https://cdn.simpleicons.org/airbyte }
+    stream: "Stream Ingestion\nKafka Connect (Iceberg sink)" { class: tool; icon: https://cdn.simpleicons.org/apachekafka }
+
+    mb: Message Bus {
+      class: zone
+      style: { fill: "#FFFDF3"; stroke: "#FBC02D"; font-size: 22 }
+      topics: "Topics\nApache Kafka" {
+        class: tool
+        shape: queue
+        icon: https://cdn.simpleicons.org/apachekafka
+      }
+      registry: "Schema Registry\nApache Avro" { class: tool; icon: https://cdn.simpleicons.org/apacheavro }
+    }
+  }
+
+  # ---------- Transformation ----------
+  transform: Transformation Layer {
+    class: zone
+    style: { fill: "#FCE4EC"; stroke: "#E53935" }
+
+    streamproc: "Stream Processing\nApache Flink" { class: tool; icon: https://cdn.simpleicons.org/apacheflink }
+    batchproc: "Batch Processing\nApache Spark + dbt Core" { class: tool; icon: https://cdn.simpleicons.org/apachespark }
+    orch: "Orchestration\nApache Airflow" { class: tool; icon: https://cdn.simpleicons.org/apacheairflow }
+    dq: "Data Quality\nGreat Expectations / dbt tests" { class: tool; icon: https://api.iconify.design/logos/dbt-icon.svg }
+
+    bronze: "Bronze\n(Iceberg on S3 / MinIO)" { class: store; style.stroke: "#CD7F32" }
+    silver: "Silver\n(Iceberg)" { class: store; style.stroke: "#9E9E9E" }
+    gold: "Gold\n(Iceberg)" { class: store; style.stroke: "#D4AF37" }
+    userspace: "User Space\n(sandbox)" { class: store; style.stroke: "#607D8B" }
+
+    bronze -> silver -> gold: { class: medallion }
+  }
+
+  # ---------- Systems Serving ----------
+  systems: Systems Serving Layer {
+    class: zone
+    style: { fill: "#E3F2FD"; stroke: "#1976D2" }
+
+    specdb: "Specialized DBs\nClickHouse / TimescaleDB" { class: tool; icon: https://cdn.simpleicons.org/clickhouse }
+    federation: "Query Federation\nTrino" { class: tool; icon: https://cdn.simpleicons.org/trino }
+    aggregations: "Aggregations\n& Views" { class: store }
+    metrics: "Metrics\n& KPIs" { class: store }
+  }
+
+  # ---------- User Serving ----------
+  userserving: User Serving Layer {
+    class: zone
+    style: { fill: "#F3E5F5"; stroke: "#8E24AA" }
+
+    dashboards: "Dashboarding\nApache Superset" { class: tool; icon: https://cdn.simpleicons.org/apachesuperset }
+    reporting: "Reporting\nMetabase" { class: tool; icon: https://cdn.simpleicons.org/metabase }
+    cache: "Cache\nRedis" { class: tool; icon: https://cdn.simpleicons.org/redis }
+  }
+}
+
+# ----------------------- Data Flows -------------------------
+ods.apps -> ods.sourcedbs: { class: flow }
+ods.sourcedbs -> dlh.ingestion.batch: "1" { class: flow }
+ods.apps -> dlh.ingestion.mb.topics: "2" { class: flow }
+ods.extapis -> dlh.ingestion.batch: "3" { class: flow }
+dlh.ingestion.batch -> dlh.ingestion.mb.topics: "4" { class: flow }
+dlh.ingestion.mb.topics -> dlh.ingestion.stream: "5" { class: flow }
+dlh.ingestion.mb.topics <-> dlh.transform.streamproc: "6" { class: flow }
+dlh.ingestion.stream -> dlh.transform.bronze: "7" { class: flow }
+dlh.transform -> dlh.systems: "8" { class: flow }
+dlh.systems -> dlh.userserving: "9" { class: flow }
+dlh.systems.specdb -> ods.apps: "10 · real-time products" { class: flow }
