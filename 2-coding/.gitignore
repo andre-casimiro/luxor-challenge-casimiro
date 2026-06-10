@@ -1,0 +1,13 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.ruff_cache/
+
+# Local config & runtime output
+.env
+alerts.txt
+
+# OS
+.DS_Store

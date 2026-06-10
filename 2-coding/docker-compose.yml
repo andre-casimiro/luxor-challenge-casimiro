@@ -1,0 +1,24 @@
+# TimescaleDB = PostgreSQL + the timescaledb extension. We get a real Postgres
+# (psql, SQL, foreign keys) plus hypertables, continuous aggregates and native
+# compression — which is what answers the challenge's scalability section.
+services:
+  db:
+    image: timescale/timescaledb:2.17.2-pg16
+    container_name: crypto-feed-db
+    environment:
+      POSTGRES_USER: crypto
+      POSTGRES_PASSWORD: crypto
+      POSTGRES_DB: crypto
+    # Host port 15432 to avoid clashing with a native Postgres on 5432.
+    ports:
+      - "15432:5432"
+    volumes:
+      - crypto_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U crypto -d crypto"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+volumes:
+  crypto_pgdata:
