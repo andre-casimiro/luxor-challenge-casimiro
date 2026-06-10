@@ -132,15 +132,16 @@ the free tier only refreshes every ~30–60s (see trade-offs).
 - **Single worker.** One process is plenty for 3 assets at 1/s. Bytewax can scale to
   multiple workers/processes; the Postgres and file sinks are written as per-worker
   partitions so that path is open.
-- **With more time:** a CoinGecko websocket/exchange feed for real per-trade OHLCV, a
-  dead-letter path for poison polls, Prometheus metrics on the dataflow, and Alembic-managed
-  migrations instead of an idempotent `schema.sql`.
 
 ---
 
 ## Scalability
 
 > Each new asset adds ~2.59M rows/month; the historical table grows fast.
+
+The current implementation already addresses both of the concerns (explained below). Another
+option would be to use the a lakehouse architecture for long term storage, consolidation and 
+distribution of the data.
 
 **1. Scale without losing information — TimescaleDB hypertable + compression.**
 `ohlcv` is a hypertable auto-partitioned into 1-day **chunks**. Chunks older than 7 days are

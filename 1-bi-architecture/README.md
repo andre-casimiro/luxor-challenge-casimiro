@@ -77,3 +77,47 @@ Here's an explanation of what types of data sits on each logical data store repr
 | 🔵 Systems Serving | Aggregations & Views | Pre-computed rollups (hourly, daily, weekly) and reusable views stored for instant retrieval, avoiding repeated full-table scans                                                            |
 | 🔵 Systems Serving | Metrics & KPIs | Operational and product metrics alongside named, versioned key business indicators with agreed calculation logic and ownership — consumed by dashboards, alerting systems, and ML pipelines |
 | 🟣 User Serving | Cache Engines | Query results caches that accelerate repeated dashboard queries and reduce pressure on query engines                                                                                        |
+
+---
+
+## Testing & Security
+
+Two cross-cutting concerns that apply at every zone rather than living in one. The
+tooling differs per stack (named in the diagrams); the *placement* is the same.
+
+### Where the data is tested
+
+Quality is enforced as **gates between stages**, not as a one-off check at the end — so
+bad data is caught at the boundary it crosses rather than surfacing in a dashboard:
+
+- **At ingestion — contract enforcement.** The **Schema Registry** (Apache Avro / Confluent
+  Schema Registry) validates every message against a versioned schema, so a producer can't
+  silently break downstream consumers. Malformed or incompatible events are rejected at the
+  edge.
+- **Bronze → Silver — structural & freshness checks.** **Data Quality** gates
+  (Great Expectations / dbt tests) assert schema, types, null-rates, ranges, uniqueness, and
+  freshness as the data is conformed. Failures halt the pipeline (or quarantine the batch)
+  before polluting governed layers.
+- **Silver → Gold — business-rule & integrity tests.** dbt tests on the marts assert
+  referential integrity, accepted values, and metric-level invariants (e.g. row counts and
+  reconciliation totals) so KPIs are trustworthy by construction.
+- **Reconciliation & observability.** Continuous data-quality monitoring (anomaly detection
+  on volumes/distributions) plus **lineage** (Marquez / Atlan) for impact analysis when a
+  test does fail — you can trace a broken metric back to the exact upstream source.
+
+### How and where it is secured
+
+- **In transit & at rest** — TLS on every hop (sources → bus → lakehouse → serving);
+  encryption at rest on object storage and the warehouse, with managed keys (KMS).
+- **Access control** — **RBAC** (Apache Ranger / OPA on the OSS stack; Snowflake Horizon /
+  cloud IAM on the managed stack) applied at the **table and column level** across all
+  layers and serving engines, so the same policy governs a notebook, a dashboard, and an
+  ad-hoc query.
+- **PII handling** — sensitive columns are tagged in the **Data Catalog** (OpenMetadata /
+  Atlan) and masked or tokenised in Silver, so downstream consumers and the User Space
+  sandbox never see raw PII unless explicitly entitled. Supports GDPR/HIPAA-style data
+  residency and right-to-erasure.
+- **Secrets** — connector credentials and API keys live in a secrets manager (Vault / cloud
+  secret store), never in code or config.
+- **Auditability** — the **catalog + lineage** layer records who accessed what and how data
+  flowed end-to-end, giving the audit trail needed for SOC 2 / compliance reviews.
