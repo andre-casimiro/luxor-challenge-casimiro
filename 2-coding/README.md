@@ -52,18 +52,6 @@ The **alert baseline** (the trailing 5-minute rollup) is computed *in the stream
 (`ohlcv_1m`, `ohlcv_5m`) are computed *in the database* as continuous aggregates, for
 retrieval — see [Schema rationale](#schema-rationale).
 
-### Modules (`src/crypto_feed/`)
-| File | Responsibility |
-|---|---|
-| `config.py` | Env-driven settings (assets, interval, threshold, window, DSN). |
-| `models.py` | `Asset`, `Tick`, `Alert` dataclasses. |
-| `coingecko.py` | REST client + pure JSON→model parsers, with retry/backoff. |
-| `sources.py` | `CoinGeckoSource` — the 1/s Bytewax polling input. |
-| `alerting.py` | `RollingWindowDetector` — the trailing-window rollup + 2% rule (pure). |
-| `sinks.py` | `PostgresSink`, `AlertFileSink` (Bytewax dynamic sinks). |
-| `bootstrap.py` | Applies the schema + seeds the `assets` maestro table. |
-| `dataflow.py` | Wires the dataflow (`flow`). |
-
 ---
 
 ## Running it
