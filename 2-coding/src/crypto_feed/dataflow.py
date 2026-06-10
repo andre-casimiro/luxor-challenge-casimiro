@@ -20,21 +20,17 @@ Nothing reads back from the database to produce alerts.
 
 from __future__ import annotations
 
-import logging
-
 import bytewax.operators as op
 from bytewax.connectors.stdio import StdOutSink
 from bytewax.dataflow import Dataflow
 
 from .alerting import RollingWindowDetector
-from .config import settings
+from .config import configure_logging, settings
 from .models import Alert, Tick
 from .sinks import AlertFileSink, PostgresSink
 from .sources import CoinGeckoSource
 
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s"
-)
+configure_logging()
 
 
 def _detect(

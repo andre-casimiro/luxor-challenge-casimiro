@@ -134,7 +134,10 @@ class CoinGeckoClient:
             except (httpx.HTTPError, httpx.HTTPStatusError) as exc:
                 last_exc = exc
                 backoff = 0.5 * (2**attempt)  # 0.5s, 1s, 2s
-                logger.warning(
+                # DEBUG, not WARNING: retries are expected (esp. 429s) and would
+                # otherwise flood the logs. The caller decides how to report a
+                # poll that fails all retries.
+                logger.debug(
                     "GET %s failed (attempt %d/%d): %s -- retrying in %.1fs",
                     path, attempt + 1, self._max_retries, exc, backoff,
                 )

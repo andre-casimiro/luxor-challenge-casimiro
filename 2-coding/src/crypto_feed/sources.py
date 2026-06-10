@@ -25,10 +25,20 @@ class CoinGeckoSource(SimplePollingSource):
     def __init__(self, interval_s: float = settings.poll_interval_s) -> None:
         super().__init__(interval=timedelta(seconds=interval_s))
         self._client = CoinGeckoClient()
+        self._skipped = 0  # consecutive failed polls (for de-duplicated logging)
 
     def next_item(self) -> list[Tick]:
         try:
-            return self._client.fetch_prices()
-        except Exception:  # noqa: BLE001 -- never let one bad poll kill the stream
-            logger.exception("poll failed; skipping this tick")
+            ticks = self._client.fetch_prices()
+        except Exception as exc:  # noqa: BLE001 -- never let one bad poll kill the stream
+            # Sustained failures (typically 429 rate limiting) are expected, so log
+            # once when the feed starts degrading and stay quiet while it persists.
+            if self._skipped == 0:
+                logger.warning("feed degraded (%s); skipping polls until it recovers", exc)
+            self._skipped += 1
             return []
+
+        if self._skipped:
+            logger.info("feed recovered after %d skipped poll(s)", self._skipped)
+            self._skipped = 0
+        return ticks

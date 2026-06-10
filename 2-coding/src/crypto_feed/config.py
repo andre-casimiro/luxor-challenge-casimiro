@@ -6,6 +6,8 @@ or windows without touching code -- see the README's "Extension" section.
 
 from __future__ import annotations
 
+import logging
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -41,3 +43,15 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
+
+
+def configure_logging(level: int = logging.INFO) -> None:
+    """Shared logging setup for the entrypoints.
+
+    Quiets httpx, which otherwise logs every request at INFO and -- under rate
+    limiting (1/s polling) -- drowns out the tool's own messages.
+    """
+    logging.basicConfig(
+        level=level, format="%(asctime)s %(levelname)s %(name)s: %(message)s"
+    )
+    logging.getLogger("httpx").setLevel(logging.WARNING)

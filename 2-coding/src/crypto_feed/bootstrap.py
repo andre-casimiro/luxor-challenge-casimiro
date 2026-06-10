@@ -12,7 +12,7 @@ from pathlib import Path
 import psycopg
 
 from .coingecko import CoinGeckoClient
-from .config import settings
+from .config import configure_logging, settings
 from .models import Asset
 
 logger = logging.getLogger(__name__)
@@ -70,9 +70,7 @@ def seed_assets(conn: psycopg.Connection, assets: list[Asset]) -> None:
 
 
 def main() -> None:
-    logging.basicConfig(
-        level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s"
-    )
+    configure_logging()
     client = CoinGeckoClient()
     try:
         assets = client.fetch_markets()
